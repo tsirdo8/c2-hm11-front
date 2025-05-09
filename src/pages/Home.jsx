@@ -7,6 +7,8 @@ const HomePage = () => {
   const [editPost, setEditPost] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
@@ -15,8 +17,8 @@ const HomePage = () => {
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        const res = await fetch('https://cs2-hm11-beta.vercel.app/posts', {
-          headers: { Authorization: `Bearer ${token}` }
+        const res = await fetch(`https://cs2-hm11-beta.vercel.app/posts?page=${currentPage}&limit=10`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
           if (res.status === 401) {
@@ -26,7 +28,8 @@ const HomePage = () => {
           throw new Error('Failed to fetch posts');
         }
         const data = await res.json();
-        setPosts(Array.isArray(data) ? data : []);
+        setPosts(Array.isArray(data.posts) ? data.posts : []);
+        setTotalPages(data.totalPages); // assuming your API sends this
       } catch (err) {
         setError(err.message);
         setPosts([]);
@@ -35,7 +38,7 @@ const HomePage = () => {
       }
     };
     fetchPosts();
-  }, [token, navigate]);
+  }, [token, navigate, currentPage]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -47,7 +50,7 @@ const HomePage = () => {
     try {
       const res = await fetch(`https://cs2-hm11-beta.vercel.app/posts/${postId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to delete post');
       setPosts(posts.filter(post => post._id !== postId));
@@ -61,14 +64,14 @@ const HomePage = () => {
     const { title, content } = newPost;
     if (!title || !content) return setError('Title and content are required');
     try {
-      const url = editPost 
+      const url = editPost
         ? `https://cs2-hm11-beta.vercel.app/posts/${editPost._id}`
         : 'https://cs2-hm11-beta.vercel.app/posts';
       const method = editPost ? 'PUT' : 'POST';
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title, content })
+        body: JSON.stringify({ title, content }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Request failed');
@@ -77,6 +80,12 @@ const HomePage = () => {
       setNewPost({ title: '', content: '' });
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handlePageChange = (page) => {
+    if (page > 0 && page <= totalPages) {
+      setCurrentPage(page);
     }
   };
 
@@ -150,6 +159,12 @@ const HomePage = () => {
             ))}
           </div>
         )}
+
+        <div className="mt-6 flex justify-center space-x-4">
+          <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50">Previous</button>
+          <span>Page {currentPage} of {totalPages}</span>
+          <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50">Next</button>
+        </div>
       </div>
     </div>
   );
