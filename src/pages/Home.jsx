@@ -104,8 +104,20 @@ const HomePage = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-xl">Loading posts...</div>;
 
-  const userId = JSON.parse(atob(token.split('.')[1]))?.userId;
-  const userEmail = JSON.parse(atob(token.split('.')[1]))?.email;
+  const getUserFromToken = () => {
+  try {
+    const decoded = JSON.parse(atob(token.split('.')[1]));
+    return {
+      userId: decoded.userId,
+      email: decoded.email
+    };
+  } catch {
+    return { userId: null, email: null };
+  }
+};
+
+const { userId, email: userEmail } = getUserFromToken();
+
 
   return (
     <div className="min-h-screen bg-gray-50">
