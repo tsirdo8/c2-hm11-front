@@ -12,31 +12,32 @@ const HomePage = () => {
   const token = localStorage.getItem('token');
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const fetchPosts = async (page = currentPage) => {
     if (!token) return navigate('/sign-in');
-    const fetchPosts = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`https://cs2-hm11-beta.vercel.app/posts?page=${currentPage}&limit=10`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          if (res.status === 401) {
-            localStorage.removeItem('token');
-            return navigate('/sign-in');
-          }
-          throw new Error('Failed to fetch posts');
+    setLoading(true);
+    try {
+      const res = await fetch(`https://cs2-hm11-beta.vercel.app/posts?page=${page}&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('token');
+          return navigate('/sign-in');
         }
-        const data = await res.json();
-        setPosts(Array.isArray(data.posts) ? data.posts : []);
-        setTotalPages(data.totalPages); // assuming your API sends this
-      } catch (err) {
-        setError(err.message);
-        setPosts([]);
-      } finally {
-        setLoading(false);
+        throw new Error('Failed to fetch posts');
       }
-    };
+      const data = await res.json();
+      setPosts(Array.isArray(data.posts) ? data.posts : []);
+      setTotalPages(data.totalPages);
+    } catch (err) {
+      setError(err.message);
+      setPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPosts();
   }, [token, navigate, currentPage]);
 
@@ -53,7 +54,7 @@ const HomePage = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Failed to delete post');
-      setPosts(posts.filter(post => post._id !== postId));
+      await fetchPosts();
     } catch (err) {
       setError(err.message);
     }
@@ -75,7 +76,7 @@ const HomePage = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Request failed');
-      setPosts(editPost ? posts.map(p => p._id === editPost._id ? data.post : p) : [data.post, ...posts]);
+      await fetchPosts(); // re-fetch updated posts
       setEditPost(null);
       setNewPost({ title: '', content: '' });
     } catch (err) {
